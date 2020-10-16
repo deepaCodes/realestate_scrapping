@@ -12,7 +12,6 @@ OPEN_DATA_ARC_GIS_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36'
 }
 
-
 SELL_COMMISSION_PCT = 2.5
 RED_FIN_BASE_URL = 'https://www.redfin.com'
 
@@ -28,3 +27,31 @@ ARC_GIS_PARAM = {
     'returnDistinctValues': 'true',
 }
 ARC_GIS_WHERE_CLAUSE = "CITY='{}' AND ZIP={} AND HOUSE_NO={}"
+
+DOC_SEARCH_POST_API = 'https://webselfservice.riversideacr.com/Web/searchPost/DOCSEARCH2111S5'
+DOC_SEARCH_GET_API = 'https://webselfservice.riversideacr.com/Web/searchResults/DOCSEARCH2111S5?page=1&_={}'
+
+DOC_SEARCH_POST_API_PAYLOAD = 'field_DocumentNumberID=&field_RecordingDateID_DOT_StartDate=&field_RecordingDateID_DOT_EndDate=&field_BothNamesID=&field_ParcelID={}&field_selfservice_documentTypes-containsInput=Contains+Any&field_selfservice_documentTypes=&field_UseAdvancedSearch='
+DOC_SEARCH_POST_HEADERS = {
+    'Host': 'webselfservice.riversideacr.com',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Origin': 'https://webselfservice.riversideacr.com',
+    'Referer': 'https://webselfservice.riversideacr.com/Web/search/DOCSEARCH2111S5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.9,kn;q=0.8',
+}
+
+DOC_SEARCH_GET_HEADERS = {
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.9,kn;q=0.8',
+    'Host': 'webselfservice.riversideacr.com',
+    'Referer': 'https://webselfservice.riversideacr.com/Web/search/DOCSEARCH2111S5',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest'
+}
+
+TRUST_KEYS = [' trust', ' trustee', ' tte']

@@ -1,16 +1,23 @@
 import itertools
 import json
 import multiprocessing
+import pathlib
 import traceback
+from datetime import datetime
 from io import StringIO
 
+import numpy
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
 from scrapper.constants import RED_FIN_BASE_URL, REDFIN_HEADERS, OPEN_DATA_ARC_GIS_API, OPEN_DATA_ARC_GIS_HEADERS, \
-    ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS
+    ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS, DOC_SEARCH_POST_API, \
+    DOC_SEARCH_POST_API_PAYLOAD, DOC_SEARCH_POST_HEADERS, DOC_SEARCH_GET_HEADERS, DOC_SEARCH_GET_API, TRUST_KEYS
 from scrapper.utils import extract_house_no, calculate_profit
+
+CURRENT_DIR = pathlib.Path(__file__).parent.absolute()
+PROJECT_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 
 
 class SoldHomeScrapper:
@@ -82,13 +89,15 @@ class SoldHomeScrapper:
             'HOA/MONTH': 'HOA_MONTH',
         }
         df.rename(columns=rename_columns, inplace=True)
-        print(df.columns)
         columns = {col: '_'.join(col.split()) for col in list(df.columns)}
-        print(columns)
+        # print(columns)
         df.rename(columns=columns, inplace=True)
+        df.replace({numpy.NaN: None}, inplace=True)
+
         return df
 
-    def fetch_property_details(self, listing_url):
+    @staticmethod
+    def fetch_property_details(listing_url):
         """
         Scrape price history and APN from listing url
         :param listing_url:
@@ -97,7 +106,7 @@ class SoldHomeScrapper:
         print('scrapping price history from: {}'.format(listing_url))
         result = {}
         try:
-            headers = self.redfin_headers.copy()
+            headers = REDFIN_HEADERS.copy()
             headers['referer'] = listing_url
             headers['Content-Type'] = 'application/json'
             params = {
@@ -124,20 +133,23 @@ class SoldHomeScrapper:
             result['APN'] = basic_info['apn'] if 'apn' in basic_info else None
             result['PROPERTY_LAST_UPDATED_DATE'] = basic_info['propertyLastUpdatedDate']
 
-            sell_events = property_history['events']
-            sold_info = {row['eventDate']: row['price'] for row in sell_events if 'Sold' in row['eventDescription']}
-            if sold_info and len(sold_info) > 1:
+            sell_events = [row for row in property_history['events'] if 'price' in row and 'sourceId' in row]
+            sold_info = {row['eventDate']: row['price'] for row in property_history['events']
+                         if 'price' in row and 'sourceId' in row and 'Sold' in row['eventDescription']
+                         and sell_events[0]['eventDate'] != row['eventDate']}
+            if sold_info:
                 print('calculate profit from sell history')
                 values = list(sold_info.values())
-                sell_price = values[0]
-                sell_price_previous = values[1]
+                sell_price = sell_events[0]['price']
+                sell_price_previous = values[0]
                 result['PROFIT'] = calculate_profit(sell_price, sell_price_previous)
             elif public_record_info['taxInfo']:
                 print('calculate profit from tax info')
                 tax_info = public_record_info['taxInfo']
-                assessed_price = tax_info['taxableLandValue'] + tax_info['taxableImprovementValue']
-                sold_price = [row['price'] for row in sell_events if 'Sold' in row['eventDescription']]
-                result['PROFIT'] = calculate_profit(sold_price[0], assessed_price)
+                assessed_price = (tax_info['taxableLandValue'] if 'taxableLandValue' in tax_info else 0) + \
+                                 (tax_info['taxableImprovementValue'] if 'taxableImprovementValue' in tax_info else 0)
+                sold_price = sell_events[0]['price'] if sell_events else 0
+                result['PROFIT'] = calculate_profit(sold_price, assessed_price)
             else:
                 pass
             print('end of scrapping')
@@ -150,6 +162,64 @@ class SoldHomeScrapper:
         print(result)
         return result
 
+    @staticmethod
+    def fetch_assessor_county_recorder(apn):
+        """
+        get Grantor and Grantee
+        :param apn:
+        :return:
+        """
+        print('Doc search for APN: {}'.format(apn))
+        result = {}
+
+        try:
+            if not apn:
+                return result
+
+            apn = apn.replace('-', '')
+
+            response = requests.post(DOC_SEARCH_POST_API, headers=DOC_SEARCH_POST_HEADERS,
+                                     data=DOC_SEARCH_POST_API_PAYLOAD.format(apn))
+
+            if not response.ok:
+                print(response.text)
+                return result
+
+            cookies = [cookie.value for cookie in response.cookies if cookie.name == 'JSESSIONID']
+            _headers = DOC_SEARCH_GET_HEADERS.copy()
+            _headers['Cookie'] = 'JSESSIONID={}'.format(cookies[0])
+
+            post_result = response.json()
+            # print(post_result)
+
+            response = requests.get(DOC_SEARCH_GET_API.format(datetime.now().timestamp()), headers=_headers)
+            if not response.ok:
+                print(response.text)
+                return result
+
+            soup = BeautifulSoup(response.text, 'lxml')
+            search_rows = soup.find('li', {'class': 'ss-search-row'})
+
+            search_result = search_rows.find_all('div', {'class': 'searchResultFourColumn'})
+            if search_result and len(search_result) == 4:
+                grantors = [row.text for row in search_result[1].find_all('li')[1:]]
+                # print(grantors)
+                result['GRANTOR'] = '; '.join(grantors)
+
+                grantees = [row.text for row in search_result[2].find_all('li')[1:]]
+                # print(grantees)
+                result['GRANTEE'] = '; '.join(grantees)
+
+                result['TRUST'] = 'Y' if [trust_txt for trust_txt in TRUST_KEYS if
+                                          trust_txt in result['GRANTOR'].lower()] else 'N'
+
+            print('APN {}, result: {}'.format(apn, result))
+
+        except:
+            traceback.print_exc()
+
+        return result
+
     def scrape_redfin(self, urls):
         """
         Recently sold home - scrape data
@@ -157,28 +227,35 @@ class SoldHomeScrapper:
         :return:
         """
 
-        test = True
-        print('Scrapping recently sold homes from :{}'.format(urls))
-        if test:
-            df = pd.read_csv('Download.csv')
-            df = df[:10]
-            print(df.count())
-            print(df.head().to_string())
-        else:
-            download_links = self._scrape_download_url(urls)
-            df = self._download_file(download_links)
-            print(df.count())
-            print(df.head().to_string())
+        start_time = datetime.now()
 
-            # df.to_csv('Download.csv', index=False)
+        print('Scrapping recently sold homes from :{}'.format(urls))
+
+        download_links = self._scrape_download_url(urls)
+        df = self._download_file(download_links)
+        print(df.count())
+        print(df.head(25).to_string())
+
+        df.to_csv('{}/DATA/Download.csv'.format(PROJECT_ROOT), index=False)
 
         df[['APN', 'PROPERTY_LAST_UPDATED_DATE', 'PROFIT']] = df.apply(
-            lambda row: self.fetch_property_details(row['LISTING_URL']),
-            axis=1, result_type='expand')
+            lambda row: self.fetch_property_details(row['LISTING_URL']), axis=1, result_type='expand')
+
+        df.replace({numpy.NaN: None}, inplace=True)
+
+        df[['GRANTOR', 'GRANTEE', 'TRUST']] = df.apply(lambda row: self.fetch_assessor_county_recorder(row['APN']),
+                                                       axis=1, result_type='expand')
+
+        df.replace({numpy.NaN: None}, inplace=True)
 
         print(df.to_string())
-        # df.to_csv('Aggregated_data.csv', index=False)
+        df.to_csv('{}/DATA/Aggregated_data.csv'.format(PROJECT_ROOT), index=False)
+
         print('end of scrapping')
+
+        end_time = datetime.now()
+
+        print('Start time: {}, end time: {}'.format(start_time, end_time))
 
     @staticmethod
     def _multiprocessing_arc_gis_api(listing):

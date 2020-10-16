@@ -20,11 +20,15 @@ def extract_number_from_string():
     result = int(re.search(r'\d+', address)[0])
     print(result)
 
+
 def match_address():
-    address = '31228 Brush Creek Cir'
+    url = 'https://cdn.shopify.com/s/files/1/1128/6962/products/98-0123-B_large.jpg?v=1555380247'
+    print(url.split('/')[-1].split('_large')[0])
+
 
 def main():
-    extract_number_from_string()
+    # extract_number_from_string()
+    match_address()
 
 
 if __name__ == '__main__':

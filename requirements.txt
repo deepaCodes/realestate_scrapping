@@ -1,3 +1,7 @@
 requests
-selenium
-fake_useragent
+flask
+python-dateutil
+bs4
+lxml
+pandas
+xlrd
