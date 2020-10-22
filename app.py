@@ -4,15 +4,20 @@ from datetime import datetime
 
 import pandas
 from flask import Flask, jsonify
+from flask_cors import CORS
+
+from cloud.aws import query_table, query_property_listing
 
 app = Flask(__name__)
+CORS(app)
 
 config = {'running': False}
 
 CURRENT_DIR = pathlib.Path(__file__).parent.absolute()
 
-report_df = pandas.read_csv('{}/DATA/Download.csv'.format(CURRENT_DIR))
-result_json = json.loads(report_df.to_json(orient="records"))
+
+# report_df = pandas.read_csv('{}/DATA/Aggregated_data.csv'.format(CURRENT_DIR))
+# result_json = json.loads(report_df.to_json(orient="records"))
 
 
 @app.route('/api/scrapper/home')
@@ -29,7 +34,8 @@ def hello():
 @app.route('/api/scrapper/report', methods=['POST'])
 def start_scrapping():
     print('fetching report. current time: {}'.format(datetime.now()))
-    return jsonify(data=result_json)
+    listings = query_property_listing()
+    return jsonify(data=listings)
 
 
 if __name__ == '__main__':

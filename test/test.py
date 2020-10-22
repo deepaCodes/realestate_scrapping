@@ -25,10 +25,16 @@ def match_address():
     url = 'https://cdn.shopify.com/s/files/1/1128/6962/products/98-0123-B_large.jpg?v=1555380247'
     print(url.split('/')[-1].split('_large')[0])
 
+def extract_listing_id():
+    url = 'http://www.redfin.com/CA/Temecula/30037-Manzanita-Ct-92591/home/6295163'
+    print(url)
+    result = url.split('/')
+    print(int(result[-1]))
 
 def main():
     # extract_number_from_string()
-    match_address()
+    # match_address()
+    extract_listing_id()
 
 
 if __name__ == '__main__':

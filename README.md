@@ -27,3 +27,10 @@ pip install -r requirements.txt
 
 ```
 
+
+## AWS 
+
+batch loading
+https://www.youtube.com/watch?v=MOaXGYgqipQ&ab_channel=Try2Catch
+
+
