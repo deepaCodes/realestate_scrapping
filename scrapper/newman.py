@@ -11,6 +11,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from cloud.aws import get_listing_keys, bulk_insert_property_listing
 from scrapper.constants import RED_FIN_BASE_URL, REDFIN_HEADERS, OPEN_DATA_ARC_GIS_API, OPEN_DATA_ARC_GIS_HEADERS, \
     ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS, DOC_SEARCH_POST_API, \
     DOC_SEARCH_POST_API_PAYLOAD, DOC_SEARCH_POST_HEADERS, DOC_SEARCH_GET_HEADERS, DOC_SEARCH_GET_API, TRUST_KEYS
@@ -93,6 +94,8 @@ class SoldHomeScrapper:
         # print(columns)
         df.rename(columns=columns, inplace=True)
         df.replace({numpy.NaN: None}, inplace=True)
+
+        df['LISTING_ID'] = df['LISTING_URL'].str.split('/').str[-1]
 
         return df
 
@@ -233,10 +236,14 @@ class SoldHomeScrapper:
 
         download_links = self._scrape_download_url(urls)
         df = self._download_file(download_links)
-        print(df.count())
-        print(df.head(25).to_string())
 
-        df.to_csv('{}/DATA/Download.csv'.format(PROJECT_ROOT), index=False)
+        listing_keys = get_listing_keys()
+        df = df[~df['LISTING_ID'].isin(listing_keys)]
+        print(df.count())
+        print(df.head(5).to_string())
+
+        date_str = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        df.to_csv('{}/DATA/Download_{}.csv'.format(PROJECT_ROOT, date_str), index=False)
 
         df[['APN', 'PROPERTY_LAST_UPDATED_DATE', 'PROFIT']] = df.apply(
             lambda row: self.fetch_property_details(row['LISTING_URL']), axis=1, result_type='expand')
@@ -248,8 +255,12 @@ class SoldHomeScrapper:
 
         df.replace({numpy.NaN: None}, inplace=True)
 
-        print(df.to_string())
-        df.to_csv('{}/DATA/Aggregated_data.csv'.format(PROJECT_ROOT), index=False)
+        print(df.head().to_string())
+
+        aggregated_csv_file = '{}/DATA/Aggregated_data_{}.csv'.format(PROJECT_ROOT, date_str)
+        df.to_csv(aggregated_csv_file, index=False)
+
+        bulk_insert_property_listing(aggregated_csv_file)
 
         print('end of scrapping')
 
@@ -300,3 +311,15 @@ class SoldHomeScrapper:
             # expand list of list into list
             result = list(itertools.chain.from_iterable(result))
             print(result)
+
+
+def main():
+    scrapper = SoldHomeScrapper()
+    urls = ['https://www.redfin.com/city/19701/CA/Temecula/recently-sold',
+            'https://www.redfin.com/city/12866/CA/Murrieta/recently-sold',
+            'https://www.redfin.com/city/19701/CA/Temecula', ]
+    scrapper.scrape_redfin(urls)
+
+
+if __name__ == '__main__':
+    main()
