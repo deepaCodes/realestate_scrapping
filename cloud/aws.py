@@ -67,6 +67,7 @@ def query_property_listing():
     for row in results:
         time_epoch = int(row['PROPERTY_LAST_UPDATED_DATE'])
         row['PROPERTY_LAST_UPDATED_DATE'] = datetime.fromtimestamp(time_epoch / 1000).strftime('%c')
+        row['PROPERTY_LAST_UPDATED_DATE_EPOCH'] = time_epoch
 
     return results
 
