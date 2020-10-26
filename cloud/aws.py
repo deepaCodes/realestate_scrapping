@@ -4,10 +4,23 @@ from datetime import datetime
 import boto3
 
 # Get the service resource.
+import pandas as pd
 
 dynamodb = boto3.resource('dynamodb')
 
 PROPERTY_LISTING_TABLE = 'PROPERTY_LISTING'
+
+DATA_TYPE_DICT = {
+    "BATHS": "float",
+    "BEDS": "float",
+    "DAYS_ON_MARKET": "int",
+    "PRICE": "float",
+    "PRICE_PER_SQUARE_FEET": "float",
+    "PROFIT": "float",
+    "SQUARE_FEET": "int",
+    "YEAR_BUILT": "int",
+    "ZIP_OR_POSTAL_CODE": "int"
+}
 
 
 def get_table(table_name):
@@ -103,11 +116,38 @@ def get_listing_keys():
     return listing_keys
 
 
+def _save_property_listing_to_file():
+    results = query_table(PROPERTY_LISTING_TABLE)
+    df = pd.DataFrame(results)
+    df.to_csv('./../DATA/property_listing.csv', index=False)
+    print(df.count())
+    print(df.dtypes)
+
+
+def _load_property_listing_from_file():
+    csv_file = './../DATA/property_listing.csv'
+    with open(csv_file) as csv_data:
+        reader = csv.DictReader(csv_data)
+        data_list = [row for row in reader]
+
+        for row in data_list:
+            for k, v in DATA_TYPE_DICT.items():
+                print(k, v)
+                if v == 'int' and row[k]:
+                    row[k] = int(float(row[k]))
+                elif v == 'float' and row[k]:
+                    row[k] = float(row[k])
+
+    print('total count: {}'.format(len(data_list)))
+
+
 def main():
-    csv_file = './../DATA/Aggregated_data.csv'
+    csv_file = './../DATA/property_listing.csv'
     # bulk_insert_property_listing(csv_file)
     # query_property_listing()
     get_listing_keys()
+    # _save_property_listing_to_file()
+    # _load_property_listing_from_file()
 
 
 if __name__ == '__main__':

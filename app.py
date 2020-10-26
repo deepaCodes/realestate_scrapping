@@ -6,7 +6,7 @@ import pandas
 from flask import Flask, jsonify
 from flask_cors import CORS
 
-from cloud.aws import query_table, query_property_listing
+from cloud.aws import query_table, query_property_listing, DATA_TYPE_DICT
 
 app = Flask(__name__)
 CORS(app)
@@ -32,9 +32,16 @@ def hello():
 
 
 @app.route('/api/scrapper/report', methods=['POST'])
-def start_scrapping():
+def get_report():
     print('fetching report. current time: {}'.format(datetime.now()))
     listings = query_property_listing()
+    for row in listings:
+        for k, v in DATA_TYPE_DICT.items():
+            if v == 'int' and row[k]:
+                row[k] = int(float(row[k]))
+            elif v == 'float' and row[k]:
+                row[k] = float(row[k])
+
     return jsonify(data=listings)
 
 
