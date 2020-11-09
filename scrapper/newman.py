@@ -369,7 +369,7 @@ class SoldHomeScrapper:
         print(len(data_set))
 
         with multiprocessing.Pool(processes=workers) as pool:
-            data_set = data_set[:10]
+            data_set = data_set
             results = list(
                 tqdm(pool.map(SoldHomeScrapper._multiprocessing_apn_search_fn, data_set),
                      desc='Open Data API Bulk fetch', total=len(data_set), dynamic_ncols=True, miniters=0))
