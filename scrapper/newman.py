@@ -184,7 +184,7 @@ class SoldHomeScrapper:
             if not apn:
                 return result
 
-            apn = apn.replace('-', '')
+            apn = str(apn).replace('-', '')
 
             response = requests.post(DOC_SEARCH_POST_API, headers=DOC_SEARCH_POST_HEADERS,
                                      data=DOC_SEARCH_POST_API_PAYLOAD.format(apn))
@@ -362,7 +362,7 @@ class SoldHomeScrapper:
         """
 
         df = pd.read_csv(csv_in_file, engine='python')
-        print(df.head().to_string())
+        # print(df.head().to_string())
         print(df.count())
 
         data_set = df.to_dict('records')

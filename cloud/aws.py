@@ -123,6 +123,7 @@ def update_control_table(key):
             'SCRAPPER_LAST_RUN_TIMESTAMP': int(datetime.now().timestamp())
         }
     )
+    print(response)
     print('Updated table {}'.format(CONTROL_TABLE))
 
 
