@@ -6,7 +6,7 @@ import pandas
 from flask import Flask, jsonify
 from flask_cors import CORS
 
-from cloud.aws import query_table, query_property_listing, DATA_TYPE_DICT
+from cloud.aws import get_scrapper_last_run_datetime, query_property_listing, DATA_TYPE_DICT
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +30,15 @@ def hello():
     print(text)
     return jsonify(hello=text)  # Returns HTTP Response with {"hello": "world"}
 
+
+@app.route('/api/scrapper/lastrun')
+def scrapper_last_run():
+    """
+    http://localhost:8080/api/scrapper/home
+    :return:
+    """
+    response = get_scrapper_last_run_datetime()
+    return jsonify(response)  # Returns HTTP Response with {"hello": "world"}
 
 @app.route('/api/scrapper/report', methods=['POST'])
 def get_report():

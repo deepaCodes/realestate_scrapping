@@ -5,10 +5,13 @@ import boto3
 
 # Get the service resource.
 import pandas as pd
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')
 
 PROPERTY_LISTING_TABLE = 'PROPERTY_LISTING'
+CONTROL_TABLE = 'CONTROL_TBL'
+SCRAPPER_KEY = 'REDFIN_SCRAPPER'
 
 DATA_TYPE_DICT = {
     "BATHS": "float",
@@ -87,20 +90,40 @@ def query_table(table_name):
     return items
 
 
-def get_last_run_datetime(table_name):
+def get_scrapper_last_run_datetime():
     """
     :param table_name:
     :return:
     """
 
-    table = get_table(table_name)
-    response = table.scan(AttributesToGet=['PROPERTY_LAST_UPDATED_DATE'])
+    table = get_table(CONTROL_TABLE)
+    response = table.query(KeyConditionExpression=Key('KEY').eq(SCRAPPER_KEY))
     items = response['Items']
-    last_run_epoch = max([int(row['PROPERTY_LAST_UPDATED_DATE']) for row in items])
-    print('Last Run Epoch: {}'.format(last_run_epoch))
-    print('Last Run Date Time: {}'.format(datetime.fromtimestamp(last_run_epoch / 1000).strftime('%c')))
+    last_run_timestamp = max([int(row['SCRAPPER_LAST_RUN_TIMESTAMP']) for row in items])
+    for item in items:
+        item['SCRAPPER_LAST_RUN_TIMESTAMP'] = int(item['SCRAPPER_LAST_RUN_TIMESTAMP'])
 
-    return last_run_epoch
+    print('Item: {}'.format(items))
+    print('Last Run Timestamp: {}'.format(datetime.fromtimestamp(last_run_timestamp)))
+
+    return items[-1] if items else None
+
+
+def update_control_table(key):
+    """
+    :param table_name:
+    :return:
+    """
+
+    table = get_table(CONTROL_TABLE)
+    response = table.put_item(
+        Item={
+            'KEY': key,
+            'SCRAPPER_LAST_RUN_DATE': datetime.now().strftime("%c"),
+            'SCRAPPER_LAST_RUN_TIMESTAMP': int(datetime.now().timestamp())
+        }
+    )
+    print('Updated table {}'.format(CONTROL_TABLE))
 
 
 def get_listing_keys():
@@ -146,9 +169,12 @@ def main():
     csv_file = './../DATA/property_listing.csv'
     # bulk_insert_property_listing(csv_file)
     # query_property_listing()
-    get_listing_keys()
+    # get_listing_keys()
     # _save_property_listing_to_file()
     # _load_property_listing_from_file()
+    # get_last_run_datetime(PROPERTY_LISTING_TABLE)
+    update_control_table(SCRAPPER_KEY)
+    get_scrapper_last_run_datetime()
 
 
 if __name__ == '__main__':

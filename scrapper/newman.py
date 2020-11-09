@@ -1,7 +1,8 @@
-import itertools
+import json
 import json
 import multiprocessing
 import pathlib
+import time
 import traceback
 from datetime import datetime
 from io import StringIO
@@ -10,15 +11,19 @@ import numpy
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 from cloud.aws import get_listing_keys, bulk_insert_property_listing
 from scrapper.constants import RED_FIN_BASE_URL, REDFIN_HEADERS, OPEN_DATA_ARC_GIS_API, OPEN_DATA_ARC_GIS_HEADERS, \
     ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS, DOC_SEARCH_POST_API, \
     DOC_SEARCH_POST_API_PAYLOAD, DOC_SEARCH_POST_HEADERS, DOC_SEARCH_GET_HEADERS, DOC_SEARCH_GET_API, TRUST_KEYS
-from scrapper.utils import extract_house_no, calculate_profit
+from scrapper.utils import calculate_profit, scrape_mortgage_rates, get_mortgage_rate
 
 CURRENT_DIR = pathlib.Path(__file__).parent.absolute()
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.absolute()
+
+workers = multiprocessing.cpu_count()
+print('CPU count: {}'.format(workers))
 
 
 class SoldHomeScrapper:
@@ -192,7 +197,7 @@ class SoldHomeScrapper:
             _headers = DOC_SEARCH_GET_HEADERS.copy()
             _headers['Cookie'] = 'JSESSIONID={}'.format(cookies[0])
 
-            post_result = response.json()
+            # post_result = response.json()
             # print(post_result)
 
             response = requests.get(DOC_SEARCH_GET_API.format(datetime.now().timestamp()), headers=_headers)
@@ -202,6 +207,8 @@ class SoldHomeScrapper:
 
             soup = BeautifulSoup(response.text, 'lxml')
             search_rows = soup.find('li', {'class': 'ss-search-row'})
+            if not search_rows:
+                return result
 
             search_result = search_rows.find_all('div', {'class': 'searchResultFourColumn'})
             if search_result and len(search_result) == 4:
@@ -216,9 +223,20 @@ class SoldHomeScrapper:
                 result['TRUST'] = 'Y' if [trust_txt for trust_txt in TRUST_KEYS if
                                           trust_txt in result['GRANTOR'].lower()] else 'N'
 
-            print('APN {}, result: {}'.format(apn, result))
+                recording_dates = [row.text.split()[0] for row in search_result[0].find_all('li')[1:]]
+                if recording_dates:
+                    recording_date = datetime.strptime(recording_dates[0], '%m/%d/%Y')
+                    year = recording_date.strftime("%Y")
+                    month = recording_date.strftime("%B")
+                    mortgage_rate = get_mortgage_rate(year, month)
+                    result.update(
+                        {'RECORDING_DATE': recording_dates[0], 'RECORDING_YEAR': year, 'RECORDING_MONTH': month,
+                         'MORTGAGE_RATE': mortgage_rate})
+
+            # print('APN {}, result: {}'.format(apn, result))
 
         except:
+            print('Error for APN: {}'.format(apn))
             traceback.print_exc()
 
         return result
@@ -250,8 +268,10 @@ class SoldHomeScrapper:
 
         df.replace({numpy.NaN: None}, inplace=True)
 
-        df[['GRANTOR', 'GRANTEE', 'TRUST']] = df.apply(lambda row: self.fetch_assessor_county_recorder(row['APN']),
-                                                       axis=1, result_type='expand')
+        return_columns = ['GRANTOR', 'GRANTEE', 'TRUST', 'RECORDING_DATE', 'RECORDING_YEAR', 'RECORDING_MONTH',
+                          'MORTGAGE_RATE']
+        df[return_columns] = df.apply(lambda row: self.fetch_assessor_county_recorder(row['APN']), axis=1,
+                                      result_type='expand')
 
         df.replace({numpy.NaN: None}, inplace=True)
 
@@ -276,41 +296,84 @@ class SoldHomeScrapper:
         :return:
         """
 
-        house_no = extract_house_no(listing['ADDRESS'])
-        if not house_no:
-            return None
+        apn = listing['APN']
+        if not apn:
+            return listing
 
+        print('Querying open data for apn: {}'.format(apn))
+        apn = apn.replace('-', '')
         try:
+            time.sleep(1)
             params = ARC_GIS_PARAM
-            params['where'] = ARC_GIS_WHERE_CLAUSE.format(listing['CITY'], int(listing['ZIP_OR_POSTAL_CODE']), house_no)
+            params['where'] = ARC_GIS_WHERE_CLAUSE.format(apn)
             response = requests.get(OPEN_DATA_ARC_GIS_API, params=params, headers=OPEN_DATA_ARC_GIS_HEADERS)
             if not response.ok:
                 print(response.text)
-                return None
+                return listing
 
             arc_gis_result = response.json()
             if 'features' in arc_gis_result and arc_gis_result['features']:
                 result = [row['attributes'] for row in arc_gis_result['features'] if 'attributes' in row]
-                print(result)
+                for row in result:
+                    for key in row.keys():
+                        if not (row[key] and type(row[key]) == str and str(row[key]).strip()):
+                            row[key] = None
+                    for key in ['HOUSE_NO', 'STREET', 'SUFFIX', 'CITY', 'ZIP']:
+                        row['OPENDATA_{}'.format(key)] = row[key]
+                        del row[key]
 
-            return result
+                del listing['APN']
+                listing.update(result[-1])
+                return listing
         except:
             traceback.print_exc()
 
-        return None
+        return listing
 
-    def fetch_parcel_accessor(self, redfin_df):
+    def fetch_open_data_attributes(self, listings):
 
-        workers = multiprocessing.cpu_count()
-        print('CPU count: {}'.format(workers))
-
-        with multiprocessing.Pool(processes=1) as pool:
-            listings = redfin_df.to_dict('records')
-            result = pool.map(SoldHomeScrapper._multiprocessing_arc_gis_api, listings)
+        with multiprocessing.Pool(processes=10) as pool:
+            # listings = redfin_df.to_dict('records')
+            result = list(tqdm(pool.map(SoldHomeScrapper._multiprocessing_arc_gis_api, listings), desc='Open Data API',
+                               total=len(listings), dynamic_ncols=True, miniters=0))
 
             # expand list of list into list
-            result = list(itertools.chain.from_iterable(result))
-            print(result)
+            result = list(filter(None, result))
+            # result = list(itertools.chain.from_iterable(result))
+            return result
+
+    @staticmethod
+    def _multiprocessing_apn_search_fn(row):
+        try:
+            result = SoldHomeScrapper.fetch_assessor_county_recorder(row['APN'])
+            row.update(result)
+        except:
+            traceback.print_exc()
+        return row
+
+    def one_time_open_data_fetch(self, csv_in_file, csv_out_file):
+        """
+
+        :param csv_file:
+        :return:
+        """
+
+        df = pd.read_csv(csv_in_file, engine='python')
+        print(df.head().to_string())
+        print(df.count())
+
+        data_set = df.to_dict('records')
+        print(len(data_set))
+
+        with multiprocessing.Pool(processes=workers) as pool:
+            data_set = data_set[:10]
+            results = list(
+                tqdm(pool.map(SoldHomeScrapper._multiprocessing_apn_search_fn, data_set),
+                     desc='Open Data API Bulk fetch', total=len(data_set), dynamic_ncols=True, miniters=0))
+
+            df = pd.DataFrame(results)
+            df.to_csv(csv_out_file, index=False)
+        print('Bulk fetch completed')
 
 
 def main():
