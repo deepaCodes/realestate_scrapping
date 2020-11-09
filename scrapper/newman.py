@@ -13,7 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from cloud.aws import get_listing_keys, bulk_insert_property_listing
+from cloud.aws import get_listing_keys, bulk_insert_property_listing, update_control_table, SCRAPPER_KEY
 from scrapper.constants import RED_FIN_BASE_URL, REDFIN_HEADERS, OPEN_DATA_ARC_GIS_API, OPEN_DATA_ARC_GIS_HEADERS, \
     ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS, DOC_SEARCH_POST_API, \
     DOC_SEARCH_POST_API_PAYLOAD, DOC_SEARCH_POST_HEADERS, DOC_SEARCH_GET_HEADERS, DOC_SEARCH_GET_API, TRUST_KEYS
@@ -281,6 +281,9 @@ class SoldHomeScrapper:
         df.to_csv(aggregated_csv_file, index=False)
 
         bulk_insert_property_listing(aggregated_csv_file)
+
+        # update control table
+        update_control_table(SCRAPPER_KEY)
 
         print('end of scrapping')
 
