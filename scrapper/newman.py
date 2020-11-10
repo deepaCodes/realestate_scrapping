@@ -354,14 +354,13 @@ class SoldHomeScrapper:
             traceback.print_exc()
         return row
 
-    def one_time_open_data_fetch(self, csv_in_file, csv_out_file):
+    def one_time_open_data_fetch(self, df, csv_out_file):
         """
 
         :param csv_file:
         :return:
         """
 
-        df = pd.read_csv(csv_in_file, engine='python')
         # print(df.head().to_string())
         print(df.count())
 

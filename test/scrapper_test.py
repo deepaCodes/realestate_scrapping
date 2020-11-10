@@ -1,3 +1,6 @@
+import time
+import traceback
+
 import pandas as pd
 
 from scrapper.newman import SoldHomeScrapper
@@ -40,10 +43,24 @@ def open_data_api():
     df.to_csv('With_OpenData.csv', index=False)
 
 
+def chunk(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+
 def one_time_open_data():
     csv_in_file = './../DATA/Parcel_Assessor.csv'
-    csv_out_file = 'OpenData_updates.csv'
-    scrapper.one_time_open_data_fetch(csv_in_file, csv_out_file)
+
+    df = pd.read_csv(csv_in_file, engine='python')
+    print(df.count())
+    for index, df_chunk in enumerate(chunk(df, 5000)):
+        csv_out_file = 'OpenData_updates_{}.csv'.format(index)
+        try:
+            _scrapper = SoldHomeScrapper()
+            _scrapper.one_time_open_data_fetch(df_chunk, csv_out_file)
+            time.sleep(60)
+        except:
+            traceback.print_exc()
+            time.sleep(60)
 
 
 def main():
