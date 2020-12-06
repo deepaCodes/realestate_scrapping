@@ -63,11 +63,20 @@ def one_time_open_data():
             time.sleep(60)
 
 
+def one_time_scrape_person_info():
+    open_data_csv_in = './../DATA/open_data.csv'
+    csv_out_file = './../DATA/open_data_with_scrape_data.csv'
+
+    _scrapper = SoldHomeScrapper()
+    _scrapper.one_time_scrape_person_info(open_data_csv_in, csv_out_file)
+
+
 def main():
     # recently_sold_homes()
     # open_data_api()
     # apn_search()
-    one_time_open_data()
+    # one_time_open_data()
+    one_time_scrape_person_info()
 
 
 if __name__ == '__main__':

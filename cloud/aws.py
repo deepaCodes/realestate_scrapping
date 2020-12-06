@@ -174,7 +174,7 @@ def main():
     # _save_property_listing_to_file()
     # _load_property_listing_from_file()
     # get_last_run_datetime(PROPERTY_LISTING_TABLE)
-    update_control_table(SCRAPPER_KEY)
+    # update_control_table(SCRAPPER_KEY)
     get_scrapper_last_run_datetime()
 
 
