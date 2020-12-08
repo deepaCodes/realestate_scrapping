@@ -105,8 +105,9 @@ def test_scrapping():
 
 
 def test_pickle():
-    df = pd.read_pickle("./../DATA/open_data_scrapper_output.pkl")
+    df = pd.read_pickle("./../DATA/open_data_scrapper_output_scraperapi.pkl")
     print(df.count())
+    print(df.to_string())
 
 def main():
     # extract_number_from_string()

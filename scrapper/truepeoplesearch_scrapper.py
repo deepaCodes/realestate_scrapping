@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from scraper_api import ScraperAPIClient
 from tqdm import tqdm
 
-client = ScraperAPIClient('d60b96a87904f8d7d611421e00eea3ca')
+client = ScraperAPIClient('1ee0040760aa540e5a689a76f10aaa84')
 
 
 def _scraper_api_call(api, params, headers):
@@ -169,8 +169,8 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
 
     data_set = df.to_dict('records')
 
-    with multiprocessing.Pool(processes=4) as pool:
-        data_set = data_set[:600]
+    with multiprocessing.Pool(processes=10) as pool:
+        # data_set = data_set[:20]
         results = list(
             tqdm(pool.map(_multiprocessing_person_scrape_fn, data_set),
                  desc='Open Data Person Bulk scraping', total=len(data_set), dynamic_ncols=True, miniters=0))
@@ -184,15 +184,15 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
     """
 
     df = pd.DataFrame(results)
-    df.to_csv(out_file, index=False)
-    # df.to_pickle(out_file)
+    # df.to_csv(out_file, index=False)
+    df.to_pickle(out_file)
     print('Bulk scrapping completed')
 
 
 def main():
     open_data_csv_in = './../DATA/open_data.csv'
-    # out_file = './../DATA/open_data_scrapper_output_scraperapi.pkl'
-    out_file = './../DATA/open_data_with_scrape_data_scrapperapi.csv'
+    out_file = './../DATA/open_data_scrapper_output_scraperapi_full.pkl'
+    # out_file = './../DATA/open_data_with_scrape_data_scrapperapi.csv'
 
     one_time_scrape_person_info(open_data_csv_in, out_file)
 
