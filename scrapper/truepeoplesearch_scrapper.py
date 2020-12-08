@@ -117,28 +117,39 @@ def _multiprocessing_person_scrape_fn(row):
                 soup = BeautifulSoup(response_text, features='lxml')
                 person_details_div = soup.find('div', {'id': 'personDetails'})
 
-                details = {'PERSON_NAME_AGE': person_details_div.find('div').text.strip()}
+                if not person_details_div:
+                    return row
+
+                details = {}
+
+                name_and_age = person_details_div.find('div').text.strip()
+                name_list = [name for name in name_and_age.split('\n') if name]
+
+                details['PERSON_NAME'] = name_list[0] if name_list else None
+                details['AGE'] = name_list[1] if name_list and len(name_list) > 1 else None
 
                 if person_details_div.find('a', {'data-link-to-more': 'address'}):
                     details['CURRENT_ADDRESS'] = person_details_div.find('a', {
-                        'data-link-to-more': 'address'}).text.strip()
+                        'data-link-to-more': 'address'}).text.strip().replace('\n', ', ')
 
                 if person_details_div.find('a', {'data-link-to-more': 'phone'}):
-                    details['PHONES'] = [a_el.text.strip() for a_el in
-                                         person_details_div.find_all('a', {'data-link-to-more': 'phone'})]
+                    details['PHONES'] = ', '.join([a_el.text.strip() for a_el in
+                                                   person_details_div.find_all('a', {'data-link-to-more': 'phone'})])
 
                 if person_details_div.find('a', {'data-link-to-more': 'aka'}):
-                    details['AKA'] = [a_el.text.strip()
-                                      for a_el in person_details_div.find_all('a', {'data-link-to-more': 'aka'})]
+                    details['AKA'] = '\n'.join([a_el.text.strip() for a_el
+                                                in person_details_div.find_all('a', {'data-link-to-more': 'aka'})])
 
                 if person_details_div.find_all('div', {'class': 'content-value'}):
-                    details['EMAILS'] = [div_el.text.strip() for div_el in
-                                         person_details_div.find_all('div', {'class': 'content-value'})
-                                         if '@' in div_el.text]
+                    details['EMAILS'] = '\n'.join([div_el.text.strip() for div_el in
+                                                   person_details_div.find_all('div', {'class': 'content-value'})
+                                                   if '@' in div_el.text])
+
                 if person_details_div.find_all('a', {'data-link-to-more': 'address'}):
-                    details['PREVIOUS_ADDRESS'] = [a_el.text.strip()
-                                                   for a_el in person_details_div.find_all('a', {
-                            'data-link-to-more': 'address'})]
+                    previous_address = [a_el.text.strip()
+                                        for a_el in person_details_div.find_all('a', {'data-link-to-more': 'address'})]
+                    details['PREVIOUS_ADDRESS'] = '\n'.join(
+                        [address.replace('\n', ', ') for address in previous_address])
 
                 print('details: {}'.format(details))
 
@@ -149,6 +160,10 @@ def _multiprocessing_person_scrape_fn(row):
     except:
         traceback.print_exc()
     return row
+
+
+def chunk(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
 def one_time_scrape_person_info(open_data_csv_in, out_file):
@@ -167,32 +182,49 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
     df['HOUSE_NO'] = df['HOUSE_NO'].astype(int)
     df['ZIP'] = df['ZIP'].astype(int)
 
-    data_set = df.to_dict('records')
+    df1 = df[df['MAIL_TO_STREET'].str.len() < 2]
+    # df2 = df[df['MAIL_TO_STREET'].str.len() > 2]
 
-    with multiprocessing.Pool(processes=10) as pool:
-        # data_set = data_set[:20]
-        results = list(
-            tqdm(pool.map(_multiprocessing_person_scrape_fn, data_set),
-                 desc='Open Data Person Bulk scraping', total=len(data_set), dynamic_ncols=True, miniters=0))
+    for index, df_chunk in enumerate(chunk(df1, 5000)):
+        csv_out_file = './../DATA/open_data_with_scrape_data_scrapperapi_{}.csv'.format(index)
+        try:
+            time.sleep(60)
+            with multiprocessing.Pool(processes=6) as pool:
+                data_set = df_chunk.to_dict('records')
+                results = list(
+                    tqdm(pool.map(_multiprocessing_person_scrape_fn, data_set),
+                         desc='Open Data Person Bulk scraping', total=len(data_set), dynamic_ncols=True, miniters=0))
+            df = pd.DataFrame(results)
+            df.to_csv(csv_out_file, index=False)
+            print('Bulk scrapping completed for chunk index: {}'.format(index))
+        except:
+            print('error for chunk index: {}'.format(index))
+            traceback.print_exc()
+            time.sleep(60)
 
+    """
+    
+    """
     """
     results = []
 
     for row in data_set[:10]:
         updated_row = _multiprocessing_person_scrape_fn(row)
         results.append(updated_row)
-    """
-
+    
     df = pd.DataFrame(results)
     # df.to_csv(out_file, index=False)
-    df.to_pickle(out_file)
+    # df.to_pickle(out_file)
+    
+    """
+
     print('Bulk scrapping completed')
 
 
 def main():
     open_data_csv_in = './../DATA/open_data.csv'
-    out_file = './../DATA/open_data_scrapper_output_scraperapi_full.pkl'
-    # out_file = './../DATA/open_data_with_scrape_data_scrapperapi.csv'
+    # out_file = './../DATA/open_data_scrapper_output_scraperapi_full.pkl'
+    out_file = './../DATA/open_data_with_scrape_data_scrapperapi.csv'
 
     one_time_scrape_person_info(open_data_csv_in, out_file)
 

@@ -4,6 +4,7 @@ import re
 import time
 from urllib.parse import urlsplit, parse_qs, quote
 
+import numpy
 import pandas as pd
 import requests
 from tqdm import tqdm
@@ -106,8 +107,12 @@ def test_scrapping():
 
 def test_pickle():
     df = pd.read_pickle("./../DATA/open_data_scrapper_output_scraperapi.pkl")
+    df.replace({numpy.NaN: None}, inplace=True)
     print(df.count())
     print(df.to_string())
+    for index, row in df.iterrows():
+        if row['PERSON_NAME_AGE']:
+            print('found')
 
 def main():
     # extract_number_from_string()
