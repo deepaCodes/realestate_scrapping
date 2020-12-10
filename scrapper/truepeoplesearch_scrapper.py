@@ -192,7 +192,7 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
             with multiprocessing.Pool(processes=6) as pool:
                 data_set = df_chunk.to_dict('records')
                 results = list(
-                    tqdm(pool.map(_multiprocessing_person_scrape_fn, data_set),
+                    tqdm(pool.imap(_multiprocessing_person_scrape_fn, data_set),
                          desc='Open Data Person Bulk scraping', total=len(data_set), dynamic_ncols=True, miniters=0))
             df = pd.DataFrame(results)
             df.to_csv(csv_out_file, index=False)

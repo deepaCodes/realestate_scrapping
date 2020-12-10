@@ -1,8 +1,10 @@
 import re
 import traceback
+from urllib import parse
 
 import requests
 from bs4 import BeautifulSoup
+from scraper_api import ScraperAPIClient
 
 from scrapper.constants import SELL_COMMISSION_PCT
 
@@ -64,8 +66,8 @@ def scrape_mortgage_rates():
         for index, year in enumerate(years):
             result[year] = {key: value[index] for key, value in monthly_rates.items()}
 
-    print(result)
-    print('Mortgage rates scrapped')
+    # print(result)
+    # print('Mortgage rates scrapped')
     return result
 
 
@@ -87,3 +89,22 @@ def get_mortgage_rate(year, month):
         return pct_rate
 
     return None
+
+
+def chunk(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+
+client = ScraperAPIClient('1ee0040760aa540e5a689a76f10aaa84')
+
+
+def scraper_api_call(api, params, headers):
+    if params:
+        api_url = '{}?{}'.format(api, parse.urlencode(params))
+    else:
+        api_url = api
+
+    # print('SCRAPER API CLIENT url: {}'.format(api_url))
+    response = client.get(url=api_url, headers=headers, country_code='US')
+
+    return response
