@@ -1,6 +1,7 @@
 import multiprocessing
 import time
 import traceback
+from datetime import datetime
 
 import numpy
 import pandas as pd
@@ -108,6 +109,7 @@ class GoogleScrapper:
                 return row
 
             if 'CAPTCHA' in response.text or "I'm not a robot" in response.text:
+                row['GOOGLE_CAPTCHA_SHOWN'] = datetime.now()
                 print('get CAPTCHA')
                 time.sleep(300)
                 return row
@@ -122,11 +124,13 @@ class GoogleScrapper:
                     results = [div_el.find('a')
                                for div_el in rso_div.find_all('div', {'class': 'g'}) if div_el.find('a')]
                     redfin_url = results[0].attrs['href'] if results else None
-                    row['REDFIN_LISTING_URL'] = redfin_url
+                    row['GOOGLE_REDFIN_LISTING_URL'] = redfin_url
 
+            """
             if redfin_url:
                 data_attributes = GoogleScrapper.scrape_url(redfin_url)
                 row.update(data_attributes)
+            """
         except Exception as ex:
             row['ERROR'] = str(ex)
             traceback.print_exc()
@@ -166,9 +170,8 @@ class GoogleScrapper:
         df = pd.DataFrame(results)
         df.to_csv(out_file, index=False)
         """
-
-        for index, df_chunk in enumerate(chunk(df, 5000)):
-            csv_out_file = './../DATA/open_data_with_redfin_estimate_googlesearch_{}.csv'.format(index)
+        for index, df_chunk in enumerate(chunk(df, 500)):
+            csv_out_file = './../DATA/google/open_data_with_redfin_estimate_googlesearch_url_{}.csv'.format(index)
             print('scrapping started for batch: {}'.format(index))
             try:
                 with multiprocessing.Pool(processes=1) as pool:
