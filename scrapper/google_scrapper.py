@@ -104,14 +104,14 @@ class GoogleScrapper:
             else:
                 response = requests.get(GOOGLE_SEARCH_URL, params=params, headers=google_headers)
 
-            if not response.ok:
-                print(response.text)
-                return row
-
-            if 'CAPTCHA' in response.text or "I'm not a robot" in response.text:
+            if 'Our systems have detected unusual traffic from your computer network' in response.text:
                 row['GOOGLE_CAPTCHA_SHOWN'] = datetime.now()
                 print('get CAPTCHA')
                 time.sleep(300)
+                return row
+
+            if not response.ok:
+                print(response.text)
                 return row
 
             soup = BeautifulSoup(response.text, features='lxml')
