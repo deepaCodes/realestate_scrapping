@@ -27,16 +27,13 @@ reffin_headers = {
 
 google_headers = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    'accept-language': 'en-US,en;q=0.9',
-    'cookie': 'CGIC=EhQxQzFDSFpOX2VuVVM5MzBVUzkzMCKHAXRleHQvaHRtbCxhcHBsaWNhdGlvbi94aHRtbCt4bWwsYXBwbGljYXRpb24veG1sO3E9MC45LGltYWdlL2F2aWYsaW1hZ2Uvd2VicCxpbWFnZS9hcG5nLCovKjtxPTAuOCxhcHBsaWNhdGlvbi9zaWduZWQtZXhjaGFuZ2U7dj1iMztxPTAuOQ; SID=4Ac1Dalw7QAu5yh8FyLZZnH6MKd07sOZ3OaXsIU5dAYA1gAwT70qKIN3u6GSUNZouGdpRw.; __Secure-3PSID=4Ac1Dalw7QAu5yh8FyLZZnH6MKd07sOZ3OaXsIU5dAYA1gAwSKokzK4iyTL3iuyB_Wqx_g.; HSID=AJ_KC7O2K-JCfag-9; SSID=AglTptvgyJuhyvBYK; APISID=6m2ybgJTfRZndZUJ/AhxCyGVNTntQH-8iM; SAPISID=wENJ0rDHENuZ5U0V/AO0sNJm7FwAP0RldG; __Secure-3PAPISID=wENJ0rDHENuZ5U0V/AO0sNJm7FwAP0RldG; SEARCH_SAMESITE=CgQIppEB; ANID=AHWqTUkRoQbRrjWL04rElrcKGijxYaL_OLkmUkiVeFWmcj-I8dpScoOXi9SngG_9; 1P_JAR=2020-12-10-11; NID=204=NJJyrRYLsBr1jkZTE_2A8sa_Xv6ezLgWES4ISQlzPV_18Ca7RdYsJpDdKYEBqqXGEaQTmMC4akA9K0weJ58MBP59uJZgw2dZl8Bqo6gHMELQ_ao3xCb8n7Qa_8P01011pb08xUEmrjmu_77IAzHKNbFcbBlhxxDX9wSS1he3tG6b3e2HStqXScrOkyNZ21YmOtl163alqoyBjDCGjOh3tTbBiiJcEdzp9R1lXtTKeg; SIDCC=AJi4QfHgdy4A3jOV_rAaFeuv7qeRtrX9964Uy02pJKALHiehLtp6Px7Q3z3nHq6WtyZimCiORHE; __Secure-3PSIDCC=AJi4QfEc_KO9LR4PgSdTXH4JNAULnRb8T4MjIWct_zJolSQaDtIWKZQIocyZRIGttwh-VjC92w; CGIC=IocBdGV4dC9odG1sLGFwcGxpY2F0aW9uL3hodG1sK3htbCxhcHBsaWNhdGlvbi94bWw7cT0wLjksaW1hZ2UvYXZpZixpbWFnZS93ZWJwLGltYWdlL2FwbmcsKi8qO3E9MC44LGFwcGxpY2F0aW9uL3NpZ25lZC1leGNoYW5nZTt2PWIzO3E9MC45; NID=204=uT2m91qfLRddN6JC1dkZ4wP5yHLoxuoAXSgQDERVbQyFC5CxMD0mln8cmq72LcxX_bBpzeczzoCokSRJFySM2gncbNjcq_cBa-PAgz6pweDh2I8w0bvhoDX6HVr11kGRHUw5jW3O4qrJh6J8wx7z2DyLtOg1lzKiz1a5spdGukA; 1P_JAR=2020-12-10-12; SIDCC=AJi4QfF5toJeaFQThxhLECNxCtT3OdTBybbs62-bHwHjhOzZMKfoiYKZ7euODt6KHqqcT5feZ-Y; __Secure-3PSIDCC=AJi4QfG43rEVuFTmil9iMPz8U2IH3vcHF8-C9rgUce1U-F7uufRoXuH9sZJFtOZvNlh8ik6-wg',
-    'sec-fetch-dest': 'document',
-    'sec-fetch-mode': 'navigate',
-    'sec-fetch-site': 'none',
-    'upgrade-insecure-requests': '1',
+    'accept-language': 'en-US,en;q=0.9,kn;q=0.8',
+    'referer': 'https://www.google.com/',
+    'cache-control': 'no-cache',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
 }
 
-GOOGLE_SEARCH_URL = 'https://google.com/search'
+GOOGLE_SEARCH_URL = 'https://www.google.com/search?hl=en'
 
 USE_PROXY = True
 
@@ -98,7 +95,7 @@ class GoogleScrapper:
         try:
             google_query = GoogleScrapper._get_google_query(row)
 
-            params = {'q': google_query, 'num': 10}
+            params = {'hl': 'en', 'q': google_query, 'start': 0, 'num': 10}
             if USE_PROXY:
                 response = scraper_api_call(GOOGLE_SEARCH_URL, params=params, headers=google_headers)
             else:
@@ -170,11 +167,11 @@ class GoogleScrapper:
         df = pd.DataFrame(results)
         df.to_csv(out_file, index=False)
         """
-        for index, df_chunk in enumerate(chunk(df, 500)):
+        for index, df_chunk in enumerate(chunk(df, 5000)):
             csv_out_file = './../DATA/google/open_data_with_redfin_estimate_googlesearch_url_{}.csv'.format(index)
             print('scrapping started for batch: {}'.format(index))
             try:
-                with multiprocessing.Pool(processes=1) as pool:
+                with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
                     data_set = df_chunk.to_dict('records')
                     results = list(
                         tqdm(pool.imap(GoogleScrapper.google_search, data_set),
