@@ -38,7 +38,7 @@ google_headers = {
 
 GOOGLE_SEARCH_URL = 'https://google.com/search'
 
-USE_PROXY = False
+USE_PROXY = True
 
 
 class GoogleScrapper:
@@ -182,7 +182,7 @@ class GoogleScrapper:
                 df = pd.DataFrame(results)
                 df.to_csv(csv_out_file, index=False)
                 print('Bulk scrapping completed for chunk index: {}'.format(index))
-                time.sleep(500)
+                # time.sleep(500)
             except:
                 print('error for chunk index: {}'.format(index))
                 traceback.print_exc()
