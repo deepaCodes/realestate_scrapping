@@ -104,6 +104,7 @@ def scraper_api_call(api, params, headers):
     else:
         api_url = api
 
+    print('proxy api')
     # print('SCRAPER API CLIENT url: {}'.format(api_url))
     response = client.get(url=api_url, headers=headers, country_code='US')
 
