@@ -16,7 +16,7 @@ properties = {'proxy': False, 'count': 0}
 def _multiprocessing_person_scrape_fn(row):
     try:
 
-        if properties.get('count', 0) > 100:
+        if properties.get('count', 0) > 250:
             properties['count'] = 0
             properties['proxy'] = False
 
@@ -185,11 +185,11 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
     df1 = df[df['MAIL_TO_STREET'].str.len() < 2]
     # df2 = df[df['MAIL_TO_STREET'].str.len() > 2]
     df1 = df1[:500]
-    for index, df_chunk in enumerate(chunk(df1, 5000)):
+    for index, df_chunk in enumerate(chunk(df1, 2500)):
         csv_out_file = './../DATA/open_data_with_scrape_data_scrapperapi_{}.csv'.format(index)
         try:
             # time.sleep(60)
-            with multiprocessing.Pool(processes=1) as pool:
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
                 data_set = df_chunk.to_dict('records')
                 results = list(
                     tqdm(pool.imap(_multiprocessing_person_scrape_fn, data_set),
