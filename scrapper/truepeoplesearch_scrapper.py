@@ -184,7 +184,6 @@ def one_time_scrape_person_info(open_data_csv_in, out_file):
 
     df1 = df[df['MAIL_TO_STREET'].str.len() < 2]
     # df2 = df[df['MAIL_TO_STREET'].str.len() > 2]
-    df1 = df1[:500]
     for index, df_chunk in enumerate(chunk(df1, 2500)):
         csv_out_file = './../DATA/open_data_with_scrape_data_scrapperapi_{}.csv'.format(index)
         try:
