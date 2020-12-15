@@ -155,6 +155,11 @@ class GoogleScrapper:
 
         print(df.count())
 
+        g_df = pd.read_csv('./../DATA/google/open_data_with_redfin_estimate_googlesearch_url_old.csv')
+        df = df[~df['APN'].isin(g_df['APN'])]
+
+        print(df.count())
+
         print(df.head(25).to_string())
 
         """
