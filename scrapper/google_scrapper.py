@@ -231,7 +231,7 @@ def scrape_redfin():
         csv_out_file = './../DATA/google/output/open_data_with_redfin_estimate_final_scrapping_{}.csv'.format(file_ext)
         print('scrapping started for batch: {}'.format(index))
         try:
-            with multiprocessing.Pool(processes=1) as pool:
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
                 data_set = df_chunk.to_dict('records')
                 results = list(
                     tqdm(pool.imap(GoogleScrapper.scrape_redfin_url, data_set),
