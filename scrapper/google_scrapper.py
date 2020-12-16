@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+from scrapper.constants import REDFIN_HEADERS
 from scrapper.utils import scraper_api_call, chunk
 
 reffin_headers = {
@@ -36,7 +37,7 @@ google_headers = {
 
 GOOGLE_SEARCH_URL = 'https://www.google.com/search?hl=en'
 
-USE_PROXY = True
+USE_PROXY = False
 
 
 class GoogleScrapper:
@@ -59,15 +60,28 @@ class GoogleScrapper:
         return google_search_text
 
     @staticmethod
-    def scrape_url(redfin_url):
+    def scrape_redfin_url(data_attributes):
         # print('Scrapping url: {}'.format(redfin_url))
+        # data_attributes = {}
 
-        data_attributes = {}
+        time.sleep(1)
+        redfin_url = data_attributes['GOOGLE_REDFIN_LISTING_URL']
+        if not redfin_url:
+            return data_attributes
+
         try:
+            headers = REDFIN_HEADERS.copy()
+            headers['referer'] = redfin_url
+            headers['Content-Type'] = 'application/json'
+            params = {
+                'propertyId': redfin_url.split('/')[-1],
+                'accessLevel': 1,
+                'pageType': 2,
+            }
             if USE_PROXY:
-                response = scraper_api_call(redfin_url, params=None, headers=reffin_headers)
+                response = scraper_api_call(redfin_url, params=params, headers=headers)
             else:
-                response = requests.get(redfin_url, headers=reffin_headers)
+                response = requests.get(redfin_url, params=params, headers=headers)
 
             if not response.ok:
                 print(response.text)
@@ -130,7 +144,7 @@ class GoogleScrapper:
 
             """
             if redfin_url:
-                data_attributes = GoogleScrapper.scrape_url(redfin_url)
+                data_attributes = GoogleScrapper.scrape_url(row)
                 row.update(data_attributes)
             """
         except Exception as ex:
@@ -208,7 +222,29 @@ def scrape_redfin():
         df_list.append(pd.read_csv(file))
 
     df = pd.concat(df_list)
+    df.drop_duplicates(inplace=True)
+    df.replace({numpy.nan: None}, inplace=True)
     print(df.count())
+
+    for index, df_chunk in enumerate(chunk(df, 2500)):
+        csv_out_file = './../DATA/google/open_data_with_redfin_estimate_final_scrapping_{}.csv'.format(index)
+        print('scrapping started for batch: {}'.format(index))
+        try:
+            with multiprocessing.Pool(processes=1) as pool:
+                data_set = df_chunk.to_dict('records')
+                results = list(
+                    tqdm(pool.imap(GoogleScrapper.scrape_redfin_url, data_set),
+                         desc='Redfin Bulk scraping', total=len(data_set), dynamic_ncols=True, miniters=0))
+            df = pd.DataFrame(results)
+            df.to_csv(csv_out_file, index=False)
+            print('Bulk scrapping completed for chunk index: {}'.format(index))
+            # time.sleep(500)
+        except:
+            print('error for chunk index: {}'.format(index))
+            traceback.print_exc()
+            time.sleep(60)
+
+    print('End of scrapping')
 
 
 def main():
