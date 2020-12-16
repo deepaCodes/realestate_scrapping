@@ -227,7 +227,7 @@ def scrape_redfin():
     print(df.count())
 
     for index, df_chunk in enumerate(chunk(df, 2500)):
-        csv_out_file = './../DATA/google/open_data_with_redfin_estimate_final_scrapping_{}.csv'.format(index)
+        csv_out_file = './../DATA/google/output/open_data_with_redfin_estimate_final_scrapping_{}.csv'.format(index)
         print('scrapping started for batch: {}'.format(index))
         try:
             with multiprocessing.Pool(processes=1) as pool:
