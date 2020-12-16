@@ -2,6 +2,7 @@ import multiprocessing
 import time
 import traceback
 from datetime import datetime
+from glob import glob
 
 import numpy
 import pandas as pd
@@ -63,7 +64,11 @@ class GoogleScrapper:
 
         data_attributes = {}
         try:
-            response = requests.get(redfin_url, headers=reffin_headers)
+            if USE_PROXY:
+                response = scraper_api_call(redfin_url, params=None, headers=reffin_headers)
+            else:
+                response = requests.get(redfin_url, headers=reffin_headers)
+
             if not response.ok:
                 print(response.text)
                 data_attributes['CAPTCHA_PRESENTED'] = True
@@ -193,6 +198,19 @@ class GoogleScrapper:
         print('End of scrapping')
 
 
+def scrape_redfin():
+    print('loading csv files from directory')
+
+    csv_files = './../DATA/google/*.csv'
+    df_list = []
+    for file in glob(csv_files):
+        print('loading file: {}'.format(file))
+        df_list.append(pd.read_csv(file))
+
+    df = pd.concat(df_list)
+    print(df.count())
+
+
 def main():
     scrapper = GoogleScrapper()
 
@@ -204,4 +222,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    scrape_redfin()
