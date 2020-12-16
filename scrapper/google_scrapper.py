@@ -37,7 +37,7 @@ google_headers = {
 
 GOOGLE_SEARCH_URL = 'https://www.google.com/search?hl=en'
 
-USE_PROXY = False
+USE_PROXY = True
 
 
 class GoogleScrapper:
