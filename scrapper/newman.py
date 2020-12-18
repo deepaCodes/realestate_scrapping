@@ -17,13 +17,15 @@ from cloud.aws import get_listing_keys, bulk_insert_property_listing, update_con
 from scrapper.constants import RED_FIN_BASE_URL, REDFIN_HEADERS, OPEN_DATA_ARC_GIS_API, OPEN_DATA_ARC_GIS_HEADERS, \
     ARC_GIS_PARAM, ARC_GIS_WHERE_CLAUSE, PROPERTY_DETAILS, DOC_SEARCH_POST_API, \
     DOC_SEARCH_POST_API_PAYLOAD, DOC_SEARCH_POST_HEADERS, DOC_SEARCH_GET_HEADERS, DOC_SEARCH_GET_API, TRUST_KEYS
-from scrapper.utils import calculate_profit, get_mortgage_rate
+from scrapper.utils import calculate_profit, get_mortgage_rate, scraper_api_call
 
 CURRENT_DIR = pathlib.Path(__file__).parent.absolute()
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 
 workers = multiprocessing.cpu_count()
 print('CPU count: {}'.format(workers))
+
+USE_PROXY = True
 
 
 class SoldHomeScrapper:
@@ -43,7 +45,12 @@ class SoldHomeScrapper:
         for url in urls:
             print('scrapping from: {}'.format(url))
             try:
-                response = requests.get(url, headers=self.redfin_headers)
+
+                if USE_PROXY:
+                    response = scraper_api_call(url, params=None, headers=self.redfin_headers)
+                else:
+                    response = requests.get(url, headers=self.redfin_headers)
+
                 if not response.ok:
                     print(response.text)
                     continue
@@ -72,7 +79,11 @@ class SoldHomeScrapper:
         for download_link in download_links:
             print('Downloading from: {}'.format(download_link))
             try:
-                response = requests.get(download_link, headers=self.redfin_headers)
+                if USE_PROXY:
+                    response = scraper_api_call(download_link, params=None, headers=self.redfin_headers)
+                else:
+                    response = requests.get(download_link, headers=self.redfin_headers)
+
                 if not response.ok:
                     print(response.text)
                     continue
@@ -122,7 +133,12 @@ class SoldHomeScrapper:
                 'accessLevel': 1,
                 'pageType': 2,
             }
-            response = requests.get(PROPERTY_DETAILS, params=params, headers=headers)
+
+            if USE_PROXY:
+                response = scraper_api_call(PROPERTY_DETAILS, params=params, headers=headers)
+            else:
+                response = requests.get(PROPERTY_DETAILS, params=params, headers=headers)
+
             if not response.ok:
                 print(response.text)
                 return None
