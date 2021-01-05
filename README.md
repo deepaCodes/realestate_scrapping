@@ -30,6 +30,11 @@ pip install -r requirements.txt
 
 ## AWS 
 
+aws configure --profile alex
+set AWS_DEFAULT_PROFILE=alex
+
+access key: https://console.aws.amazon.com/iam/home?region=us-east-2#/security_credentials
+
 batch loading
 https://www.youtube.com/watch?v=MOaXGYgqipQ&ab_channel=Try2Catch
 

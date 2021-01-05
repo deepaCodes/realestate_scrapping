@@ -7,7 +7,8 @@ import boto3
 import pandas as pd
 from boto3.dynamodb.conditions import Key
 
-dynamodb = boto3.resource('dynamodb')
+session = boto3.Session(profile_name='alex')
+dynamodb = session.resource('dynamodb')
 
 PROPERTY_LISTING_TABLE = 'PROPERTY_LISTING'
 CONTROL_TABLE = 'CONTROL_TBL'
